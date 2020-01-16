@@ -1,0 +1,145 @@
+
+----------------------------------------------########----------------------------------------------
+
+CREATE procedure [dbo].[Fox_Get_OverLapBlockAppointment] --1011163,1011163544915793,'12:24 PM','12:24 PM','2018-12-07','54438882'    
+@PracticeCode bigint,      
+@TimeFrom varchar(10),    
+@TimeTo varchar(10),    
+@Date varchar(15),    
+@ProviderID bigint    
+as    
+begin    
+  
+select app.time_from,app.time_to,ors.FIRST_NAME as ProviderFirstName,ors.LAST_NAME as ProviderLastName ,p.first_name as PatientFirstName,p.last_name PatientLastName,    
+rr.REFERRAL_REGION_NAME region,Aloc.Code LocCode,Aloc.Name LocName,Aloc.Address,Aloc.City,Aloc.State,Aloc.Zip ,Aloc.Longitude,Aloc.Latitude    
+,app.APPOINTMENT_DATE,app.PATIENT_ACCOUNT    
+from fox_tbl_appointment app     
+left join FOX_TBL_PROVIDER ors on ors.FOX_PROVIDER_ID=app.PROVIDER_ID    
+left join fox_tbl_appointment_status appStatus on appStatus.APPOINTMENT_STATUS_ID=app.APPOINTMENT_STATUS_ID    
+left join patient p on p.patient_account=app.patient_account    
+  
+left join FOX_TBL_CASE FTC on ftc.case_id=app.case_id    
+left join FOX_TBL_ACTIVE_LOCATIONS Aloc on Aloc.loc_id=FTC.pos_id     
+left join FOX_TBL_REFERRAL_REGION rr on rr.REFERRAL_REGION_ID=FTC.TREATING_REGION_ID    
+where isnull(app.deleted,0)<>1 --and app.patient_account=@PatientAccount     
+and app.PROVIDER_ID=@ProviderID    
+AND ((cast(@TimeFrom as time) >= cast(app.time_from as time) AND cast(@TimeTo as time) <= cast(app.time_to as time))     
+    OR (cast(@TimeTo as time)>= cast(app.time_from as time) AND cast(@TimeFrom as time) <= cast(app.time_to as time)) )    
+  
+and convert(date,app.appointment_date)=convert(date,@Date)    
+and app.practice_code=@PracticeCode    
+and isnull(app.IsBlocked,0)=1  
+end    
+
+
+----------------------------------------------########----------------------------------------------
+
+CREATE procedure [dbo].[Fox_Get_OverLapAppointment] --1011163,1011163544915793,'12:24 PM','12:24 PM','2018-12-07','54438882'
+@PracticeCode bigint,
+@PatientAccount bigint,
+@TimeFrom varchar(10),
+@TimeTo varchar(10),
+@Date varchar(15),
+@ProviderID bigint
+as
+begin
+select app.time_from,app.time_to,ors.FIRST_NAME as ProviderFirstName,ors.LAST_NAME as ProviderLastName ,p.first_name as PatientFirstName,p.last_name PatientLastName,
+rr.REFERRAL_REGION_NAME region,Aloc.Code LocCode,Aloc.Name LocName,Aloc.Address,Aloc.City,Aloc.State,Aloc.Zip ,Aloc.Longitude,Aloc.Latitude
+,app.APPOINTMENT_DATE,app.PATIENT_ACCOUNT
+from fox_tbl_appointment app 
+left join FOX_TBL_PROVIDER ors on ors.FOX_PROVIDER_ID=app.PROVIDER_ID
+inner join fox_tbl_appointment_status appStatus on appStatus.APPOINTMENT_STATUS_ID=app.APPOINTMENT_STATUS_ID
+inner join patient p on p.patient_account=app.patient_account
+inner join FOX_TBL_CASE FTC on ftc.case_id=app.case_id
+left join FOX_TBL_ACTIVE_LOCATIONS Aloc on Aloc.loc_id=FTC.pos_id 
+inner join FOX_TBL_REFERRAL_REGION rr on rr.REFERRAL_REGION_ID=FTC.TREATING_REGION_ID
+where isnull(app.deleted,0)<>1 and app.patient_account=@PatientAccount 
+--and (cast(app.time_from as time) >= cast(@TimeFrom as time) and cast(app.time_to as time) <= cast(@TimeTo as time))
+AND ((cast(@TimeFrom as time) >= cast(app.time_from as time) AND cast(@TimeTo as time) <= cast(app.time_to as time)) 
+    OR (cast(@TimeTo as time)>= cast(app.time_from as time) AND cast(@TimeFrom as time) <= cast(app.time_to as time)) )
+--and ((cast(@TimeFrom as time) >=cast(app.time_from as time) and cast(@TimeTo as time) <=cast(app.time_to as time) or cast(@TimeTo as time) >=cast(app.time_from as time) and cast(@TimeFrom as time) <=cast(app.time_to as time))
+--or (cast(app.time_from as time) >= cast(@TimeFrom as time) and cast(app.time_to as time) <= cast(@TimeTo as time) or cast(app.time_to as time) >= cast(@TimeFrom as time) and cast(app.time_from as time) <= cast(@TimeTo as time))
+--)
+and convert(date,app.appointment_date)=convert(date,@Date)
+and app.practice_code=@PracticeCode
+and appStatus.DESCRIPTION in ('Pending','Rescheduled')
+union
+select app.time_from,app.time_to,ors.FIRST_NAME as ProviderFirstName,ors.LAST_NAME as ProviderLastName ,p.first_name as PatientFirstName,p.last_name PatientLastName,
+rr.REFERRAL_REGION_NAME region,Aloc.Code LocCode,Aloc.Name LocName,Aloc.Address,Aloc.City,Aloc.State,Aloc.Zip ,Aloc.Longitude,Aloc.Latitude
+,app.APPOINTMENT_DATE,app.PATIENT_ACCOUNT
+from fox_tbl_appointment app 
+left join FOX_TBL_PROVIDER ors on ors.FOX_PROVIDER_ID=app.PROVIDER_ID
+inner join fox_tbl_appointment_status appStatus on appStatus.APPOINTMENT_STATUS_ID=app.APPOINTMENT_STATUS_ID
+inner join patient p on p.patient_account=app.patient_account
+inner join FOX_TBL_CASE FTC on ftc.case_id=app.case_id
+left join FOX_TBL_ACTIVE_LOCATIONS Aloc on Aloc.loc_id=FTC.pos_id 
+inner join FOX_TBL_REFERRAL_REGION rr on rr.REFERRAL_REGION_ID=FTC.TREATING_REGION_ID
+where isnull(app.deleted,0)<>1 --and app.patient_account=@PatientAccount 
+and app.PROVIDER_ID=@ProviderID
+AND ((cast(@TimeFrom as time) >= cast(app.time_from as time) AND cast(@TimeTo as time) <= cast(app.time_to as time)) 
+    OR (cast(@TimeTo as time)>= cast(app.time_from as time) AND cast(@TimeFrom as time) <= cast(app.time_to as time)) )
+--and (cast(app.time_from as time) in (cast(@TimeFrom as time)) and cast(app.time_to as time) in(cast(@TimeTo as time)))
+--and (cast(app.time_from as time) >= cast(@TimeFrom as time) and cast(app.time_to as time) <= cast(@TimeTo as time))
+--and ((cast(@TimeFrom as time) >=cast(app.time_from as time) and cast(@TimeTo as time) <=cast(app.time_to as time) or cast(@TimeTo as time) >=cast(app.time_from as time) and cast(@TimeFrom as time) <=cast(app.time_to as time))
+--or (cast(app.time_from as time) >= cast(@TimeFrom as time) and cast(app.time_to as time) <= cast(@TimeTo as time) or cast(app.time_to as time) >= cast(@TimeFrom as time) and cast(app.time_from as time) <= cast(@TimeTo as time))
+--)
+and convert(date,app.appointment_date)=convert(date,@Date)
+and app.practice_code=@PracticeCode
+and appStatus.DESCRIPTION in ('Pending','Rescheduled')
+end
+
+
+
+----------------------------------------------########----------------------------------------------
+
+
+CREATE procedure [dbo].[Fox_Get_PTOOverlap]
+@ProviderID bigint,
+@PracticeCode bigint,
+@FromDate date,
+@ToDate date
+as
+begin
+select * from WS_TBL_FOX_PTO 
+where isnull(deleted,0)<>1 and ProviderID=@ProviderID and practice_code=@PracticeCode and (Convert(date,PTO_START_DATE)>=Convert(date,@FromDate) and Convert(date,PTO_END_DATE)<=Convert(date,@ToDate))
+and isnull(IS_APPROVED,0)=1
+end
+
+
+----------------------------------------------########----------------------------------------------
+
+     
+CREATE procedure [dbo].[Fox_Get_PTOOverlaps] --1011163, 5443903, '12/10/2018','12/12/2018'      
+@PracticeCode bigint,      
+@UserID bigint,      
+@FromDate varchar(50),      
+@ToDate varchar(50)      
+as      
+begin   
+  
+declare @UserName varchar(50)    
+select @UserName=user_name from FOX_TBL_APPLICATION_USER where user_id=@UserID    
+  
+     
+select pto.PTO_START_DATE,pto.PTO_END_DATE,ors.FIRST_NAME ProviderFirstName,ors.LAST_NAME ProviderLastName      
+from WS_TBL_FOX_PTO pto      
+inner join FOX_TBL_PROVIDER ors on ors.FOX_PROVIDER_ID=pto.ProviderID      
+      
+inner join FOX_TBL_REFERRAL_REGION rr on rr.REFERRAL_REGION_ID=ors.REFERRAL_REGION_ID--(rr.REFERRAL_REGION_CODE=ors.REFERRAL_REGION or rr.REFERRAL_REGION_NAME=ors.REFERRAL_REGION)      
+left join fox_tbl_Dashboard_access da on da.REFERRAL_REGION_ID=rr.REFERRAL_REGION_ID and da.USER_NAME=@UserName and isnull(da.DELETED,0)=0       
+ inner join FOX_TBL_APPLICATION_USER usr on (rr.REGIONAL_DIRECTOR_ID=usr.user_id or rr.ALTERNATE_REGION_ID=usr.user_id or rr.SENIOR_REGIONAL_DIRECTOR_ID=usr.user_id or da.USER_NAME=@UserName)      
+ inner join FOX_TBL_ROLE r on r.ROLE_ID=usr.ROLE_ID    
+  left join FOX_TBL_ROLE ar on ar.ROLE_ID=da.SHOW_AS_ROLE    
+      
+where isnull(pto.deleted,0)<>1 and isnull(pto.IS_APPROVED,0)=1      
+--and pto.practice_code=@PracticeCode and r.role_name in ('Regional Director','Senior Regional Director') and usr.user_id =@UserID    
+and pto.practice_code=@PracticeCode and (r.role_name in ('Regional Director','Senior Regional Director') or ar.role_name in ('Regional Director')) and usr.user_id =@UserID                                                  
+--and (Convert(date,pto.PTO_START_DATE)>=Convert(date,@FromDate) and Convert(date,pto.PTO_END_DATE)<=Convert(date,@ToDate))      
+and ((Convert(date,@FromDate) between Convert(date,pto.PTO_START_DATE) and Convert(date,pto.PTO_END_DATE)) or       
+(Convert(date,@ToDate) between Convert(date,pto.PTO_START_DATE) and Convert(date,pto.PTO_END_DATE)) )      
+end 
+
+
+
+
+
